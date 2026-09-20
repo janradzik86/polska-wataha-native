@@ -1,0 +1,70 @@
+name: Build iOS IPA (Ad Hoc — bez App Store)
+
+on:
+  push:
+    paths: ["ios/**", ".github/workflows/ios-build.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Core: testy jednostkowe (asystent + mesh)"
+        run: swift test
+        working-directory: ios/PolskaWataha/core
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+        working-directory: ios/PolskaWataha
+
+      - name: Build unsigned (compile check)
+        run: |
+          xcodebuild -project PolskaWataha.xcodeproj \
+            -scheme PolskaWataha \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+        working-directory: ios/PolskaWataha
+
+      - name: Import signing certificate
+        if: ${{ secrets.APPLE_TEAM_ID != '' }}
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERT_P12 }}
+          p12-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+
+      - name: Install provisioning profile
+        if: ${{ secrets.APPLE_TEAM_ID != '' }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFILE" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+        env:
+          PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+
+      - name: Archive + export signed IPA (Ad Hoc)
+        if: ${{ secrets.APPLE_TEAM_ID != '' }}
+        run: |
+          xcodebuild -project PolskaWataha.xcodeproj \
+            -scheme PolskaWataha \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -archivePath build/PolskaWataha.xcarchive \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" archive
+          xcodebuild -exportArchive \
+            -archivePath build/PolskaWataha.xcarchive \
+            -exportPath export \
+            -exportOptionsPlist exportOptions-adhoc.plist
+          cp export/PolskaWataha.ipa export/Polska-Wataha-iOS-v0.2.ipa
+        working-directory: ios/PolskaWataha
+
+      - name: Upload IPA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Polska-Wataha-iOS-IPA
+          path: ios/PolskaWataha/export/*.ipa

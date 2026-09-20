@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polska Wataha! — instalacja</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #f4f6fa; margin: 0; }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 28px 18px 40px; }
+  h1 { font-size: 24px; color: #1F2A44; text-align: center; margin: 10px 0 2px; }
+  .sub { text-align: center; color: #6b7280; font-size: 13px; margin-bottom: 22px; }
+  .flag { height: 6px; background: linear-gradient(90deg,#fff 50%,#D4213D 50%); border-radius: 3px; margin-bottom: 18px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; margin-bottom: 16px; }
+  .btn { display: block; width: 100%; text-align: center; background: #D4213D; color: #fff;
+         text-decoration: none; font-weight: 700; font-size: 17px; padding: 16px 0; border-radius: 14px; box-shadow: 0 6px 16px rgba(212,33,61,.35); }
+  .btn:active { transform: scale(.98); }
+  .step { display: flex; gap: 12px; margin: 12px 0; font-size: 14px; color: #1F2A44; }
+  .num { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #FDE8EC; color: #D4213D;
+         font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-top: -2px; }
+  .qr { text-align: center; margin: 14px 0 4px; }
+  .note { font-size: 12px; color: #6b7280; }
+  .warn { background: #FFF7E6; border: 1px solid #F2C14E; color: #7c5a00; border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+  code { background: #f1f3f7; padding: 2px 6px; border-radius: 6px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="flag"></div>
+  <h1>🦅 Polska Wataha!</h1>
+  <div class="sub">Instalacja bezpośrednia • CzarneWilkiPrawdy • wersja 0.2.0</div>
+
+  <div class="card">
+    <!-- ↓↓↓ ZMIEŃ "TWOJA-STRONA" NA SWÓJ ADRES HTTPS (bez końcowego "/") ↓↓↓ -->
+    <a class="btn" href="itms-services://?action=download-manifest&url=https%3A%2F%2FTWOJA-STRONA%2FPolskaWataha%2Fmanifest.plist">
+      ⬇️ ZAINSTALUJ APLIKACJĘ
+    </a>
+    <p class="note" style="text-align:center;margin-top:10px">
+      Safari poprosi o potwierdzenie — dotknij <b>„Zainstaluj”</b>. Po chwili „Polska Wataha!” pojawi się na ekranie głównym.
+    </p>
+    <div class="qr">
+      <img alt="QR do instalacji" width="200" height="200"
+        src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=https%3A%2F%2FTWOJA-STRONA%2FPolskaWataha%2Finstall.html">
+      <p class="note">Możesz też zeskanować ten kod aparatem.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:16px;color:#1F2A44;margin:0 0 6px">Jak to działa? (3 kroki)</h2>
+    <div class="step"><div class="num">1</div><div>Otwórz tę stronę w <b>Safari</b> na iPhonie (nie w innej przeglądarce).</div></div>
+    <div class="step"><div class="num">2</div><div>Dotknij <b>ZAINSTALUJ APLIKACJĘ</b> i zatwierdź instalację.</div></div>
+    <div class="step"><div class="num">3</div><div>Na ekranie głównym pojawi się ikona orła. Możesz uruchomić i zalogować się (demo: <code>cwilk / haslo123</code>).</div></div>
+  </div>
+
+  <div class="warn">
+    ⚠️ <b>Ważne:</b> instalacja działa TYLKO na iPhone’ach, których <b>UDID został wcześniej dopisany</b>
+    do profilu przez administratora dystrybucji (do 100 urządzeń rocznie).
+    UDID znajdziesz: <code>udid.io</code> lub Ustawienia → Ogólne → Informacje (dokładna instrukcja u administratora).
+  </div>
+
+  <p class="note" style="text-align:center;margin-top:18px">Aplikacja do wyłącznego użytku społeczności Watahy • dystrybucja Ad Hoc • profil ważny 12 miesięcy</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  MANIFEST do instalacji OTA (bez App Store).
+  Wgrywasz na HTTPS serwer (np. GitHub Pages / Netlify / własny hosting):
+    1. TEN plik            →  https://TWOJA-STRONA/PolskaWataha/manifest.plist
+    2. PolskaWataha.ipa    →  https://TWOJA-STRONA/PolskaWataha/PolskaWataha.ipa
+    3. install.html        →  https://TWOJA-STRONA/PolskaWataha/install.html
+
+  Zamień WE TRZY miasta "TWOJA-STRONA" oraz (jeśli zmianisz) bundle id.
+  Plik musi kończyć się ".plist" — inaczej iOS odmówi instalacji.
+-->
+<plist version="1.0">
+<dict>
+  <key>items</key>
+  <array>
+    <dict>
+      <key>assets</key>
+      <array>
+        <dict>
+          <key>kind</key>
+          <string>software-package</string>
+          <key>url</key>
+          <string>https://TWOJA-STRONA/PolskaWataha/PolskaWataha.ipa</string>
+        </dict>
+      </array>
+      <key>metadata</key>
+      <dict>
+        <key>bundle-identifier</key>
+        <string>pl.wataha.ios</string>
+        <key>bundle-version</key>
+        <string>2</string>
+        <key>kind</key>
+        <string>software</string>
+        <key>title</key>
+        <string>Polska Wataha!</string>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>

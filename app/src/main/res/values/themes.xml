@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PolskaWataha" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/flag_white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/flag_white</item>
+        <item name="android:windowBackground">@color/flag_white</item>
+        <item name="android:colorAccent">@color/flag_red</item>
+    </style>
+</resources>

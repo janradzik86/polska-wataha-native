@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polska Wataha — Panel sieci (Czarny Wilk)</title>
+<style>
+:root{--red:#D4213D;--dark:#A81C30;--ink:#1F2A44;--grey:#6B7280;--bg:#FFFFFF;--soft:#F3F4F6;--line:#E5E7EB;--green:#2E7D32;--amber:#F59E0B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--red);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header .logo{width:44px;height:44px}
+header h1{font-size:20px;font-weight:800;letter-spacing:.5px}
+header .sub{font-size:12px;opacity:.9}
+header .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.badge{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);padding:4px 10px;border-radius:20px;font-size:12px}
+.stripes{height:8px;background:repeating-linear-gradient(90deg,#fff 0 60px,var(--red) 60px 88px)}
+nav{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+nav button{border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px}
+nav button.active{background:var(--red);color:#fff;border-color:var(--red)}
+main{padding:16px;max-width:1200px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(31,42,68,.06)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--grey)}
+.card .tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin:4px 4px 0 0}
+.tag.give{background:#FDE8EC;color:var(--dark)} .tag.need{background:#FEF3C7;color:#92400E}
+.tag.offer{background:#E8F5E9;color:var(--green)} .tag.open{background:#E8F5E9;color:var(--green)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:800px){.grid2{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{background:var(--soft);font-size:12px;color:var(--grey)}
+.login{max-width:420px;margin:40px auto;border:1px solid var(--line);border-radius:16px;padding:24px;text-align:center}
+.login input{margin:6px 0;padding:12px;width:100%;border:1px solid var(--line);border-radius:10px;font-size:14px}
+.btn{background:var(--red);color:#fff;border:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
+.btn:hover{background:var(--dark)}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--ink);color:#7ee787;padding:12px;border-radius:10px;white-space:pre-wrap;max-height:320px;overflow:auto}
+footer{text-align:center;padding:20px;color:var(--grey);font-size:12px}
+.pill{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--soft);color:var(--grey);border:1px solid var(--line)}
+.pill .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:5px}
+</style>
+</head>
+<body>
+<header>
+  <svg class="logo" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+    <path d="M54,32 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0" stroke="#fff" stroke-width="6" fill="none"/>
+    <path d="M51.5,36 L56.5,36 L56.5,80 L51.5,80 Z" fill="#fff"/>
+    <path d="M38,56 L70,56 L70,61 L38,61 Z" fill="#fff"/>
+    <path d="M54,80 C46,87 35,84 32,73" stroke="#fff" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M54,80 C62,87 73,84 76,73" stroke="#fff" stroke-width="6" stroke-linecap="round" fill="none"/>
+  </svg>
+  <div>
+    <h1>POLSKA WATAHA — PANEL SIECI</h1>
+    <div class="sub">Czarny Wilk • backend V0.1 • offline-first • komunikacja: Internet / Bluetooth / Wi-Fi Direct / LoRa</div>
+  </div>
+  <div class="right">
+    <span class="badge" id="connBadge">łączenie…</span>
+    <span class="badge" id="userBadge">niezalogowany</span>
+  </div>
+</header>
+<div class="stripes"></div>
+<nav id="nav"></nav>
+<main id="main"></main>
+<footer>🇵🇱 Polska Wataha — biel i czerwień. Razem przetrwamy. • Backend REST + panel web dostarczany z aplikacją Android.</footer>
+
+<script>
+const API = '';
+let token = localStorage.getItem('wataha_token') || null;
+let me = JSON.parse(localStorage.getItem('wataha_me') || 'null');
+let state = { users:[], posts:[], messages:[], exchanges:[], crisis:[], nodes:[], markers:[], commlog:[] };
+let tab = 'panel';
+
+const $ = s => document.querySelector(s);
+const h = (tag, cls, txt) => { const el=document.createElement(tag); if(cls) el.className=cls; if(txt!==undefined) el.textContent=txt; return el; };
+
+async function api(path, method='GET', body=null){
+  const res = await fetch(API+path, { method, headers:{'Content-Type':'application/json'}, body: body?JSON.stringify(body):null });
+  return res.json().catch(()=>({ok:false}));
+}
+
+function refreshBadge(){
+  const b = $('#connBadge');
+  if(apiOnline){ b.innerHTML='<span class="dot"></span>backend: ONLINE'; } else { b.textContent='backend: OFFLINE'; b.style.opacity=.6; }
+  $('#userBadge').textContent = me ? ('🖤 ' + me.displayName + ' (' + me.username + ')') : 'niezalogowany';
+}
+
+async function loadAll(){
+  const [u,p,m,e,c,n,mark,log,fb] = await Promise.all([
+    api('/api/users'), api('/api/posts'), api('/api/messages'), api('/api/exchanges'),
+    api('/api/crisis'), api('/api/nodes'), api('/api/markers'), api('/api/comm/log'), api('/api/feedback')
+  ]);
+  if(u.ok) state.users=u.items; if(p.ok) state.posts=p.items; if(m.ok) state.messages=m.items;
+  if(e.ok) state.exchanges=e.items; if(c.ok) state.crisis=c.items; if(n.ok) state.nodes=n.items;
+  if(mark.ok) state.markers=mark.items; if(log.ok) state.commlog=log.items; if(fb.ok) state.feedback=fb.items;
+}
+
+function renderNav(){
+  const tabs = [['panel','🛡️ Panel'],['posts','📦 Ogłoszenia'],['users','👥 Użytkownicy'],['messages','💬 Wiadomości'],
+                ['exchanges','🔁 Wymiany'],['crisis','🚨 Kryzys'],['feedback','💡 Pomysły'],['network','📡 Sieć'],['log','🧾 Log LoRa/Comm']];
+  const nav=$('#nav'); nav.innerHTML='';
+  tabs.forEach(([id,label])=>{ const b=h('button', id===tab?'active':'', label); b.onclick=()=>{ tab=id; render(); }; nav.appendChild(b); });
+}
+
+function render(){
+  renderNav();
+  const main=$('#main'); main.innerHTML='';
+  const onlineNodes = state.nodes.filter(n=>n.status==='ONLINE').length;
+  if(tab==='panel'){
+    const wrap=h('div'); wrap.className='cards';
+    const stats=[['📦 Ogłoszenia', state.posts.length],['👥 Użytkownicy', state.users.length],
+      ['💬 Wiadomości', state.messages.length],['🔁 Wymiany', state.exchanges.length],
+      ['🚨 Sygnały kryzysowe', state.crisis.length],['📡 Węzły sieci', onlineNodes+' / '+state.nodes.length]];
+    stats.forEach(([t,v])=>{ const c=h('div','card'); c.appendChild(h('h3','',t)); c.appendChild(h('p','',String(v))); wrap.appendChild(c); });
+    main.appendChild(wrap);
+    const g=h('div'); g.className='grid2';
+    const left=h('div','card');
+    left.appendChild(h('h3','','📡 Architektura komunikacji'));
+    left.appendChild(h('p','','APPLICATION → COMM SERVICE → COMMUNICATION ADAPTER → INTERNET / BLUETOOTH / Wi-Fi DIRECT / LoRa'));
+    left.appendChild(h('p','','Aplikacja Android jest offline-first: każdy zapis ląduje w lokalnej bazie Room, a przy braku internetu w kolejce synchronizacji i jest tu wysyłany po odzyskaniu łączności.'));
+    g.appendChild(left);
+    const right=h('div','card');
+    right.appendChild(h('h3','','⚡ Konto demo'));
+    right.appendChild(h('p','','użytkownik: cwilk<br>hasło: haslo123<br><br>Dane aplikacji i backendu są zsynchronizowane — testuj wymianę treści w obie strony.'));
+    g.appendChild(right);
+    main.appendChild(g);
+  }
+  if(tab==='posts'){
+    const wrap=h('div'); wrap.className='cards';
+    state.posts.forEach(p=>{
+      const c=h('div','card');
+      const emoji={GIVE:'📦',NEED:'🆘',OFFER:'🤝'}[p.type]||'📦';
+      c.appendChild(h('h3','',emoji+' '+p.title));
+      const tag=h('span','tag '+(p.type?p.type.toLowerCase():''), p.type);
+      tag.style.float='right'; c.appendChild(tag);
+      c.appendChild(h('p','',p.body));
+      c.appendChild(h('p','','👤 '+p.authorName+' • '+p.status));
+      wrap.appendChild(c);
+    });
+    main.appendChild(wrap);
+  }
+  if(tab==='users'){
+    const t=h('table'); const tr=h('tr'); ['Użytkownik','Pseudonim','Telefon','Reputacja','Odznaki','Lokalizacja'].forEach(x=>tr.appendChild(h('th','',x))); t.appendChild(tr);
+    state.users.slice().sort((a,b)=>b.reputation-a.reputation).forEach(u=>{
+      const r=h('tr'); [u.displayName+' (@'+u.username+')','🐺 '+(u.bio||''),u.phone||'—','⭐ '+(u.reputation||3),u.badges||'—','📍 '+u.lat.toFixed(3)+', '+u.lng.toFixed(3)].forEach(x=>r.appendChild(h('td','',x)));
+      t.appendChild(r);
+    });
+    main.appendChild(t);
+  }
+  if(tab==='messages'){
+    const t=h('table'); const tr=h('tr'); ['Od','Do','Treść','Czas'].forEach(x=>tr.appendChild(h('th','',x))); t.appendChild(tr);
+    state.messages.slice(-20).reverse().forEach(m=>{
+      const r=h('tr'); [m.fromId,m.toId,m.text,new Date(m.createdAt).toLocaleString('pl-PL')].forEach(x=>r.appendChild(h('td','',x))); t.appendChild(r);
+    });
+    main.appendChild(t);
+    if(!state.messages.length){ main.appendChild(h('p','','Brak wiadomości — wyślij z aplikacji Android, a pojawi się tutaj.')); }
+  }
+  if(tab==='exchanges'){
+    const t=h('table'); const tr=h('tr'); ['Ogłoszenie','Proponuje','Właściciel','Status','Treść'].forEach(x=>tr.appendChild(h('th','',x))); t.appendChild(tr);
+    state.exchanges.forEach(x=>{
+      const r=h('tr'); [x.postTitle,x.proposerName,x.ownerId,x.status,x.message].forEach(v=>r.appendChild(h('td','',v))); t.appendChild(r);
+    });
+    main.appendChild(t);
+  }
+  if(tab==='crisis'){
+    state.crisis.forEach(c=>{
+      const card=h('div','card'); card.style.marginBottom='8px';
+      card.appendChild(h('h3','',(c.type==='KOMUNIKAT'?'📢 ':'🚨 ')+c.type+' — '+c.userName));
+      card.appendChild(h('p','',c.text));
+      card.appendChild(h('p','','📍 '+c.lat.toFixed(4)+', '+c.lng.toFixed(4)+' • '+new Date(c.createdAt).toLocaleString('pl-PL')));
+      main.appendChild(card);
+    });
+    if(!state.crisis.length) main.appendChild(h('p','','Brak sygnałów kryzysowych.'));
+  }
+  if(tab==='feedback'){
+    const t=h('table'); const tr=h('tr'); ['Data','Użytkownik','Temat','Treść'].forEach(x=>tr.appendChild(h('th','',x))); t.appendChild(tr);
+    state.feedback.slice().sort((a,b)=>b.createdAt-a.createdAt).forEach(f=>{
+      const r=h('tr');
+      [new Date(f.createdAt).toLocaleString('pl-PL'), f.userName, f.subject, f.text].forEach(x=>r.appendChild(h('td','',x)));
+      t.appendChild(r);
+    });
+    main.appendChild(t);
+    main.appendChild(h('p','','💡 Zgłoszenia z aplikacji Android („Masz pomysł? Napisz!") trafiają tutaj automatycznie przez kolejkę synchronizacji.'));
+  }
+  if(tab==='network'){
+    const wrap=h('div'); wrap.className='cards';
+    state.nodes.forEach(n=>{
+      const c=h('div','card');
+      c.appendChild(h('h3','','📡 '+n.name));
+      c.appendChild(h('p','','typ: '+n.type+' • status: '+n.status+' • bateria: '+n.battery+'%'));
+      c.appendChild(h('p','','📍 '+n.lat.toFixed(3)+', '+n.lng.toFixed(3)));
+      wrap.appendChild(c);
+    });
+    main.appendChild(wrap);
+    const g=h('div','grid2');
+    const l=h('div','card'); l.appendChild(h('h3','','🧪 MESH LAB w aplikacji'));
+    l.appendChild(h('p','','W aplikacji Android (ekran Sieć → MESH LAB) istnieje symulator węzłów A→B→C→D z możliwością symulacji awarii i store-and-forward — przetestuj go bez fizycznego LoRa.'));
+    g.appendChild(l);
+    const r=h('div','card'); r.appendChild(h('h3','','📻 LoRa (V0.4)'));
+    r.appendChild(h('p','','Warstwa LoRaAdapter jest gotowa w kontrakcie (ramki, hop-count, store-and-forward). Fizyczna integracja modułu E22/SX1262 — etap V0.4.'));
+    g.appendChild(r);
+    main.appendChild(g);
+  }
+  if(tab==='log'){
+    main.appendChild(h('div','mono', state.commlog.map(l=>'['+new Date(l.ts).toISOString()+'] '+l.from+' → '+l.to+' ('+l.type+') '+l.body).join('\n')||'— pusty —'));
+  }
+}
+
+let apiOnline=false;
+(async function boot(){
+  if(me){ $('#userBadge').textContent='🖤 '+me.displayName; }
+  try{ const hh=await api('/api/health'); apiOnline = !!hh.ok; }catch(e){ apiOnline=false; }
+  refreshBadge(); render();
+  setInterval(async ()=>{ try{ const hh=await api('/api/health'); apiOnline=!!hh.ok; }catch(e){ apiOnline=false; } refreshBadge(); await loadAll(); render(); }, 10000);
+})();
+</script>
+</body>
+</html>

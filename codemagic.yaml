@@ -1,0 +1,52 @@
+# Codemagic — budowa IPA bez Maca (chmura macOS). Ścieżki: korzeń repo polska-wataha.
+workflows:
+  polska-wataha-ios:
+    name: Polska Wataha! iOS V0.2
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    environment:
+      ios_signing:
+        distribution_type: ad_hoc
+        bundle_identifier: pl.wataha.ios
+      xcode: latest
+    scripts:
+      - name: Testy rdzenia (asystent + mesh)
+        script: swift test
+        working_directory: ios/PolskaWataha/core
+      - name: Generowanie projektu Xcode
+        script: |
+          brew install xcodegen
+          xcodegen generate
+        working_directory: ios/PolskaWataha
+      - name: Budowa archiwum
+        script: |
+          xcodebuild -project PolskaWataha.xcodeproj \
+            -scheme PolskaWataha \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -archivePath $CM_BUILD_DIR/PolskaWataha.xcarchive \
+            archive
+        working_directory: ios/PolskaWataha
+      - name: Export IPA (Ad Hoc)
+        script: |
+          cat > exportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>ad-hoc</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath $CM_BUILD_DIR/PolskaWataha.xcarchive \
+            -exportPath $CM_BUILD_DIR/export \
+            -exportOptionsPlist exportOptions.plist
+        working_directory: ios/PolskaWataha
+    artifacts:
+      - ios/ios/PolskaWataha/export/*.ipa

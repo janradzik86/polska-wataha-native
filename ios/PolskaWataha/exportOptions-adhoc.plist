@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>ad-hoc</string>
+  <key>signingStyle</key>
+  <string>manual</string>
+  <key>stripSwiftSymbols</key>
+  <true/>
+</dict>
+</plist>
+<!--
+  Ad Hoc = dystrybucja POZA App Store:
+  - podpisany .ipa instaluje się z linku (OTA) albo przez Apple Configurator,
+  - wymaga konta Apple Developer (99 USD/rok) i wpisania UDID każdego iPhone'a
+    (do 100 urządzeń rocznie),
+  - brak przeglądu Apple, brak sklepu, profil ważny 1 rok.
+
+  Instalacja na Macu:
+  xcodebuild -project PolskaWataha.xcodeproj -scheme PolskaWataha \
+    -destination 'generic/platform=iOS' -configuration Release \
+    -archivePath build/PolskaWataha.xcarchive archive
+
+  xcodebuild -exportArchive -archivePath build/PolskaWataha.xcarchive \
+    -exportPath export -exportOptionsPlist exportOptions-adhoc.plist
+  # → export/PolskaWataha.ipa  ← ten plik wgrywasz na serwer WWW (patrz ../ota/)
+-->

@@ -1,0 +1,229 @@
+{
+ "users": [
+  {
+   "id": "u_cwilk",
+   "username": "cwilk",
+   "passwordHash": "haslo123",
+   "displayName": "Czarny Wilk",
+   "phone": "+48 600 100 200",
+   "bio": "Strażnik Prawdy. Koordynator osiedla.",
+   "reputation": 4.7,
+   "badges": "ORZEL,WILK,KOTWICA,STRAZNIK",
+   "lat": 52.2297,
+   "lng": 21.0122,
+   "lastSeen": 1788061293559
+  },
+  {
+   "id": "u_ostoja",
+   "username": "ostoja",
+   "passwordHash": "demo",
+   "displayName": "Ostoja",
+   "phone": "+48 601 211 300",
+   "bio": "Pomagam sąsiadom od 2022.",
+   "reputation": 4.2,
+   "badges": "SOLIDARNOSC,ORZEL",
+   "lat": 52.2367,
+   "lng": 20.9657,
+   "lastSeen": 1788061293559
+  },
+  {
+   "id": "u_sokol",
+   "username": "sokol",
+   "passwordHash": "demo",
+   "displayName": "Sokół",
+   "phone": "+48 602 342 100",
+   "bio": "Kierowca. Wożę rzeczy.",
+   "reputation": 3.9,
+   "badges": "ORZEL",
+   "lat": 52.2657,
+   "lng": 20.9478,
+   "lastSeen": 1788061293559
+  },
+  {
+   "id": "u_warta",
+   "username": "warta",
+   "passwordHash": "demo",
+   "displayName": "Warta",
+   "phone": "+48 603 111 222",
+   "bio": "Sanitariuszka.",
+   "reputation": 4.5,
+   "badges": "ORZEL,KOTWICA",
+   "lat": 52.2222,
+   "lng": 21.0455,
+   "lastSeen": 1788061293559
+  }
+ ],
+ "posts": [
+  {
+   "id": "p_seed_0",
+   "authorId": "u_cwilk",
+   "authorName": "Czarny Wilk",
+   "type": "GIVE",
+   "title": "Apteczka domowa (komplet)",
+   "body": "Bandaże, gaza, sól fizjologiczna. Wszystko ważne do 2027.",
+   "lat": 52.2297,
+   "lng": 21.0122,
+   "createdAt": 1788057693559,
+   "status": "OPEN"
+  },
+  {
+   "id": "p_seed_1",
+   "authorId": "u_ostoja",
+   "authorName": "Ostoja",
+   "type": "OFFER",
+   "title": "Mogę pomóc w porządkowaniu magazynu",
+   "body": "Ręce do pracy + transport w obrębie Woli.",
+   "lat": 52.2367,
+   "lng": 20.9657,
+   "createdAt": 1788054093559,
+   "status": "OPEN"
+  },
+  {
+   "id": "p_seed_2",
+   "authorId": "u_sokol",
+   "authorName": "Sokół",
+   "type": "OFFER",
+   "title": "Mogę podwieźć do punktu pomocy",
+   "body": "Bus 9 miejsc: Bielany–Wola–Centrum.",
+   "lat": 52.2657,
+   "lng": 20.9478,
+   "createdAt": 1788055893559,
+   "status": "OPEN"
+  },
+  {
+   "id": "p_seed_3",
+   "authorId": "u_warta",
+   "authorName": "Warta",
+   "type": "NEED",
+   "title": "Potrzebuję pasków do glukometru",
+   "body": "Pomoc dla seniora, okolice Pragi.",
+   "lat": 52.2222,
+   "lng": 21.0455,
+   "createdAt": 1788059493559,
+   "status": "OPEN"
+  },
+  {
+   "id": "p_test_1",
+   "authorId": "u_cwilk",
+   "authorName": "Czarny Wilk",
+   "type": "GIVE",
+   "title": "Test z APK",
+   "body": "Wysyłka testowa z aplikacji Android",
+   "lat": 52.23,
+   "lng": 21.02,
+   "createdAt": 1750000000000,
+   "status": "OPEN",
+   "_serverAt": 1788061295400
+  }
+ ],
+ "messages": [],
+ "exchanges": [],
+ "crisis": [
+  {
+   "id": "c_test",
+   "userId": "u_cwilk",
+   "userName": "Czarny Wilk",
+   "type": "SOS",
+   "text": "Test SOS",
+   "lat": 52.23,
+   "lng": 21.02,
+   "createdAt": 1750000000000,
+   "_serverAt": 1788061295529
+  }
+ ],
+ "badges": [],
+ "nodes": [
+  {
+   "id": "bk1",
+   "name": "Brama Warszawa",
+   "type": "GATEWAY",
+   "status": "ONLINE",
+   "lat": 52.2297,
+   "lng": 21.0122,
+   "battery": 100
+  },
+  {
+   "id": "n_A",
+   "name": "NODE A",
+   "type": "MESH",
+   "status": "ONLINE",
+   "lat": 52.2297,
+   "lng": 21.0122,
+   "battery": 87
+  },
+  {
+   "id": "n_B",
+   "name": "NODE B",
+   "type": "MESH",
+   "status": "ONLINE",
+   "lat": 52.2367,
+   "lng": 20.9657,
+   "battery": 64
+  },
+  {
+   "id": "n_C",
+   "name": "NODE C",
+   "type": "MESH",
+   "status": "ONLINE",
+   "lat": 52.2222,
+   "lng": 21.0455,
+   "battery": 91
+  },
+  {
+   "id": "n_D",
+   "name": "NODE D",
+   "type": "MESH",
+   "status": "ONLINE",
+   "lat": 52.2657,
+   "lng": 20.9478,
+   "battery": 45
+  }
+ ],
+ "markers": [
+  {
+   "id": "m1",
+   "title": "Szkoła Podstawowa nr 12",
+   "subtitle": "Punkt pomocy",
+   "kind": "POINT_POMOCY",
+   "emoji": "🏫",
+   "lat": 52.2297,
+   "lng": 21.0122
+  },
+  {
+   "id": "m2",
+   "title": "Kościół św. Anny",
+   "subtitle": "Dystrybucja wody",
+   "kind": "POINT_POMOCY",
+   "emoji": "⛪",
+   "lat": 52.2367,
+   "lng": 20.9657
+  }
+ ],
+ "commlog": [
+  {
+   "ts": 1788061293559,
+   "from": "SEED",
+   "to": "BACKEND",
+   "type": "BOOT",
+   "body": "Backend Polska Wataha uruchomiony — dane przykładowe załadowane."
+  },
+  {
+   "ts": 1788061295410,
+   "from": "u_cwilk",
+   "to": "NODE-B",
+   "type": "MESH_PACKET",
+   "body": "ping-wataha"
+  }
+ ],
+ "feedback": [
+  {
+   "id": "f_e2e_1",
+   "userId": "u_cwilk",
+   "userName": "Czarny Wilk",
+   "subject": "💡 Pomysł na funkcję",
+   "text": "Dodać tryb oszczędzania energii dla seniorów",
+   "createdAt": 1788062000000,
+   "_serverAt": 1788068225415
+  }
+ ]
+}

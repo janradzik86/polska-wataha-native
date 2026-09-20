@@ -1,0 +1,51 @@
+# Polska Wataha! — iOS (XcodeGen)
+# Generowanie: xcodegen generate   →  PolskaWataha.xcodeproj
+name: PolskaWataha
+options:
+  bundleIdPrefix: pl.wataha
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  PolskaWatahaCore:
+    path: core
+
+targets:
+  PolskaWataha:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: PolskaWataha
+    dependencies:
+      - package: PolskaWatahaCore
+        product: PolskaWatahaCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.wataha.ios
+        MARKETING_VERSION: 0.2.0
+        CURRENT_PROJECT_VERSION: 2
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        DEVELOPMENT_TEAM: ""           # ← tutaj wpisz swój Team ID (lub wybierz w Xcode)
+    info:
+      path: PolskaWataha/Info.plist
+      properties:
+        CFBundleDisplayName: "Polska Wataha!"
+        CFBundleName: "Polska Wataha"
+        CFBundleShortVersionString: "0.2.0"
+        CFBundleVersion: "2"
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Light
+        ITSAppUsesNonExemptEncryption: false
+        NSMicrophoneUsageDescription: "Mikrofon jest używany wyłącznie do rozmowy głosowej z asystentem WILK oraz dyktowania wiadomości."
+        NSSpeechRecognitionUsageDescription: "Rozpoznawanie mowy pozwala WILK-owi słuchać pytań — zamiana mowy na tekst odbywa się na urządzeniu."
+        NSCameraUsageDescription: "Aparat jest używany wyłącznie do dodania zdjęcia do ogłoszenia."
+        NSLocationWhenInUseUsageDescription: "Lokalizacja jest używana tylko, gdy dodajesz ogłoszenie lub wysyłasz sygnał kryzysowy."
+        NSBluetoothAlwaysUsageDescription: "Bluetooth służy do wykrywania urządzeń sieci mesh w pobliżu (etap V0.3)."
+
+# Testy jednostkowe rdzenia (można też uruchomić z Xcode):
+# swift test --package-path core

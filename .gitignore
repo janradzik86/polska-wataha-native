@@ -1,0 +1,18 @@
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.apk
+# iOS / Swift
+*.xcarchive
+**/.build/
+xcuserdata/
+DerivedData/
+*.xcodeproj/
+!project.yml
+# Node
+node_modules/
+# system / archive
+.DS_Store
+deliverables/
+*.zip

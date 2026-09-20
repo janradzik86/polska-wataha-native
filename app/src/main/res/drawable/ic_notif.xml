@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- kotwica miniaturowa koloru flagi -->
+    <path
+        android:pathData="M54,32 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0"
+        android:strokeColor="#D4213D"
+        android:strokeWidth="6"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M50.5,38 L57.5,38 L57.5,80 L50.5,80 Z"
+        android:fillColor="#D4213D" />
+    <path
+        android:pathData="M37,56 L71,56 L71,62 L37,62 Z"
+        android:fillColor="#D4213D" />
+    <path
+        android:pathData="M54,80 C45,88 33,85 30,72"
+        android:strokeColor="#D4213D"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M54,80 C63,88 75,85 78,72"
+        android:strokeColor="#D4213D"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+</vector>

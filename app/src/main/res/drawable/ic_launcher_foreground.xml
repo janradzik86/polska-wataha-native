@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kotwica Polski Walczącej (symbol "P" – Polska Walcząca) na bieli-czerwieni -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- pierścień kotwicy -->
+    <path
+        android:pathData="M54,32 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:fillColor="#00000000" />
+    <!-- trzon -->
+    <path
+        android:pathData="M51.5,36 L56.5,36 L56.5,80 L51.5,80 Z"
+        android:fillColor="#FFFFFF" />
+    <!-- poprzeczka (część litery P) -->
+    <path
+        android:pathData="M38,56 L70,56 L70,61 L38,61 Z"
+        android:fillColor="#FFFFFF" />
+    <!-- ramiona kotwicy -->
+    <path
+        android:pathData="M54,80 C46,87 35,84 32,73"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M54,80 C62,87 73,84 76,73"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <!-- zakończenia ramion -->
+    <path
+        android:pathData="M32,73 L25,69 L30,66 Z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M76,73 L83,69 L78,66 Z"
+        android:fillColor="#FFFFFF" />
+</vector>
