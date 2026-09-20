@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: macos-14
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,7 +24,7 @@ jobs:
         run: xcodegen generate
         working-directory: ios/PolskaWataha
 
-      - name: Build unsigned (compile check)
+      - name: Build unsigned (compile check na Apple SDK)
         run: |
           xcodebuild -project PolskaWataha.xcodeproj \
             -scheme PolskaWataha \
@@ -31,30 +33,42 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
         working-directory: ios/PolskaWataha
 
-      - name: Import signing certificate
-        if: ${{ secrets.APPLE_TEAM_ID != '' }}
-        uses: apple-actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.APPLE_CERT_P12 }}
-          p12-password: ${{ secrets.APPLE_CERT_PASSWORD }}
-
-      - name: Install provisioning profile
-        if: ${{ secrets.APPLE_TEAM_ID != '' }}
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$PROFILE" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+      # ---------- Poniżej: tylko gdy skonfigurowano APPLE_TEAM_ID ----------
+      - name: Setup keychain + import certificate + profile
+        if: ${{ env.APPLE_TEAM_ID != '' }}
         env:
-          PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          P12_B64: ${{ secrets.APPLE_CERT_P12 }}
+          P12_PASS: ${{ secrets.APPLE_CERT_PASSWORD }}
+          PROFILE_B64: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+        run: |
+          KEYCHAIN=$RUNNER_TEMP/wataha.keychain-db
+          security create-keychain -p ci "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p ci "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          echo "$P12_B64" | base64 --decode --output "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASS" \
+            -T /usr/bin/codesign -T /usr/bin/security -A
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$PROFILE_B64" | base64 --decode \
+            --output "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
 
       - name: Archive + export signed IPA (Ad Hoc)
-        if: ${{ secrets.APPLE_TEAM_ID != '' }}
+        if: ${{ env.APPLE_TEAM_ID != '' }}
+        env:
+          APPLE_PROFILE_NAME: ${{ secrets.APPLE_PROFILE_NAME }}
         run: |
           xcodebuild -project PolskaWataha.xcodeproj \
             -scheme PolskaWataha \
             -destination 'generic/platform=iOS' \
             -configuration Release \
             -archivePath build/PolskaWataha.xcarchive \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" archive
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$APPLE_PROFILE_NAME" \
+            archive
           xcodebuild -exportArchive \
             -archivePath build/PolskaWataha.xcarchive \
             -exportPath export \
