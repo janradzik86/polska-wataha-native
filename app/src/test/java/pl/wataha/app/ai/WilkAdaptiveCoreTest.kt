@@ -97,3 +97,5 @@ class WilkAdaptiveCoreTest {
         assertFalse(answer.crisis)
     }
 }
+
+// CI synchronization marker for WILK validation.
