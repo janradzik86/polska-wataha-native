@@ -21,7 +21,7 @@ object VerifiedCrisisKnowledge {
     val knownTopics = setOf(
         "KRYZYS", "Pierwsza pomoc — RKO", "Pierwsza pomoc — krwotok",
         "Pierwsza pomoc — zadławienie", "Pierwsza pomoc — oparzenie",
-        "Hipotermia", "Woda — bezpieczeństwo", "Powódź — bezpieczeństwo"
+        "Hipotermia", "Udar cieplny", "Woda — bezpieczeństwo", "Powódź — bezpieczeństwo", "Pierwsza pomoc"
     )
 
     fun answer(userText: String): Reply? {
@@ -67,7 +67,23 @@ object VerifiedCrisisKnowledge {
             )
         }
 
-        if (containsAny(q, "skażona woda", "skazona woda", "czy gotowac wode", "czy gotować wodę", "woda po powodzi")) {
+        if (containsAny(q, "udar cieplny", "udar sloneczny", "udar słoneczny", "splatanie w upale", "splątanie w upale", "bardzo goraco i splatany", "bardzo gorąco i splątany")) {
+            return Reply(
+                "Udar cieplny",
+                "🚨 Podejrzenie udaru cieplnego to stan nagły. Przenieś osobę do chłodnego miejsca, usuń zbędną odzież, rozpocznij szybkie chłodzenie chłodną wodą lub mokrymi okładami i wezwij 112. Nie zostawiaj osoby samej. Jeśli jest nieprzytomna lub nie może bezpiecznie połykać, nie podawaj napojów.",
+                crisis = true
+            )
+        }
+
+        if (containsAny(q, "pierwsza pomoc", "co robic rannemu", "co robić rannemu")) {
+            return Reply(
+                "Pierwsza pomoc",
+                "🩹 Napisz, co dokładnie się stało: krwotok, brak oddechu, zadławienie, oparzenie, złamanie czy inny uraz. Przy bezpośrednim zagrożeniu życia uruchom Tryb Kryzysowy i dzwoń 112, jeśli masz zasięg. WILK poda tylko podstawowe, bezpieczne kroki pierwszej pomocy i nie zastępuje ratownika ani lekarza.",
+                crisis = false
+            )
+        }
+
+        if (containsAny(q, "skażona woda", "skazona woda", "czy gotowac wode", "czy gotować wodę", "woda po powodzi", "jak oczyscic wode", "jak oczyścić wodę", "czy ta woda jest bezpieczna")) {
             return Reply(
                 "Woda — bezpieczeństwo",
                 "💧 Przy komunikacie o skażeniu wody stosuj dokładnie zalecenia służb lub wodociągów. Gotowanie pomaga przy wielu zagrożeniach biologicznych, ale nie usuwa wielu zanieczyszczeń chemicznych. Jeśli podejrzewane jest skażenie chemiczne lub paliwem, korzystaj z bezpiecznego źródła zastępczego wskazanego przez służby. Wodę po kontakcie z wodą powodziową traktuj jako potencjalnie zanieczyszczoną.",
