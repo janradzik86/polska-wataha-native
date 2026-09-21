@@ -37,7 +37,7 @@ class WilkAdaptiveCoreTest {
         val state = core.getLearningState("Ogień")
         assertNotNull(state)
         assertEquals(ExplanationStyle.SIMPLE, state!!.preferredStyle)
-        assertTrue(state.learnedPhrases.contains("tak jest zrozumiale"))
+        assertFalse(state.learnedPhrases.contains("tak jest zrozumiale"))
     }
 
     @Test
@@ -86,6 +86,20 @@ class WilkAdaptiveCoreTest {
         assertTrue(answer.text.contains("100–120"))
         assertTrue(answer.suggestedActions.any { it.action == WilkAction.OPEN_CRISIS_MODE })
         assertTrue(answer.suggestedActions.any { it.action == WilkAction.CALL_112 })
+    }
+
+    @Test
+    fun `rejestr lora pokazuje tylko przetestowany sprzet`() {
+        val registry = object : LoraSupportRegistry {
+            override fun supportedDevices(): List<LoraDeviceSupport> = listOf(
+                LoraDeviceSupport("ok", "Test868", "USB", "EU868", tested = true),
+                LoraDeviceSupport("no", "Untested", "USB", "EU868", tested = false)
+            )
+        }
+        val core = WilkAdaptiveCore(InMemoryWilkLearningStore(), registry)
+        val answer = core.ask("Jaki moduł LoRa kupić?")
+        assertTrue(answer.text.contains("Test868"))
+        assertFalse(answer.text.contains("Untested"))
     }
 
     @Test
