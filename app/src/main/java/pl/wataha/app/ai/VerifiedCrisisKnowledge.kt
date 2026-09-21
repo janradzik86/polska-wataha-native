@@ -115,6 +115,6 @@ object VerifiedCrisisKnowledge {
 
     private fun normalize(s: String): String {
         val nf = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-        return nf.replace("\\p{Mn}+".toRegex(), "").lowercase()
+        return nf.replace("\\p{Mn}+".toRegex(), "").replace('ł', 'l').replace('Ł', 'L').lowercase()
     }
 }
