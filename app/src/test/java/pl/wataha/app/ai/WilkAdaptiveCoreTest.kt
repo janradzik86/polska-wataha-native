@@ -45,7 +45,7 @@ class WilkAdaptiveCoreTest {
         val core = WilkAdaptiveCore()
         val answer = core.ask("Nie mam modułu LoRa. Jaki moduł kupić do telefonu?")
         assertEquals("LoRa — wybór sprzętu", answer.topic)
-        assertTrue(answer.text.contains("obsługiwanych") || answer.text.contains("obsługiwany"))
+        assertTrue(answer.text.contains("potwierdzonej") || answer.text.contains("przetestowany"))
     }
 
     @Test
