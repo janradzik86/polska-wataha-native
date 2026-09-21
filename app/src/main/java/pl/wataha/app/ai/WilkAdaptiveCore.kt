@@ -55,7 +55,8 @@ class InMemoryWilkLearningStore : WilkLearningStore {
  * Docelowe UI powinno rozmawiać z tą klasą, nie bezpośrednio z AssistantEngine.
  */
 class WilkAdaptiveCore(
-    private val store: WilkLearningStore = InMemoryWilkLearningStore()
+    private val store: WilkLearningStore = InMemoryWilkLearningStore(),
+    private val loraRegistry: LoraSupportRegistry = NoConfirmedLoraSupport
 ) {
     private var lastAnswer: WilkAnswer? = null
 
@@ -80,7 +81,7 @@ class WilkAdaptiveCore(
         }
 
         val verified = VerifiedCrisisKnowledge.answer(text)
-        val lora = if (verified == null) LoraKnowledge.answer(text) else null
+        val lora = if (verified == null) LoraKnowledge.answer(text, loraRegistry) else null
         val learnedTopic = if (verified == null && lora == null) resolveLearnedTopic(normalized) else null
 
         val base: AssistantEngine.Reply
