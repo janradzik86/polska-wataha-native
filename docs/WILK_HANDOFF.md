@@ -97,3 +97,6 @@ Nie merge'ować do produkcji dopóki:
 - finalny rejestr LoRa nie jest podłączony,
 - testy Android nie przejdą,
 - nie zostanie wykonany krótki test ręczny WILKA bez internetu.
+
+
+CI note: branch synchronized after base workflow activation.
