@@ -1,11 +1,12 @@
 package pl.wataha.app.ai
 
 /**
- * WILK vNext — warstwa adaptacyjna nad istniejącym, deterministycznym AssistantEngine.
+ * WILK vNext — adaptacyjna warstwa nad lokalnym silnikiem wiedzy.
  *
- * Zasada bezpieczeństwa:
- * - fakty/procedury pochodzą wyłącznie z zatwierdzonej bazy wiedzy,
- * - "uczenie" zmienia sposób tłumaczenia, nie treść procedury,
+ * Zasady:
+ * - fakty i procedury pochodzą wyłącznie z lokalnej, zatwierdzonej bazy,
+ * - "uczenie" zmienia sposób tłumaczenia i rozpoznawanie sformułowań, nie fakty,
+ * - odpowiedzi kryzysowe są zablokowane przed swobodnym przepisywaniem,
  * - brak internetu nie blokuje działania.
  */
 enum class ExplanationStyle { STANDARD, SIMPLE, STEP_BY_STEP, TECHNICAL }
@@ -24,7 +25,8 @@ data class WilkAnswer(
     val topic: String?,
     val crisis: Boolean,
     val style: ExplanationStyle,
-    val source: String = "verified-local-kb"
+    val source: String = "verified-local-kb",
+    val suggestedActions: List<WilkActionSuggestion> = emptyList()
 )
 
 data class TopicLearning(
@@ -38,17 +40,19 @@ data class TopicLearning(
 interface WilkLearningStore {
     fun read(topic: String): TopicLearning?
     fun write(state: TopicLearning)
+    fun all(): List<TopicLearning>
 }
 
 class InMemoryWilkLearningStore : WilkLearningStore {
     private val states = mutableMapOf<String, TopicLearning>()
     override fun read(topic: String): TopicLearning? = states[topic]
     override fun write(state: TopicLearning) { states[state.topic] = state }
+    override fun all(): List<TopicLearning> = states.values.toList()
 }
 
 /**
- * Główny punkt wejścia dla nowego WILKA.
- * UI powinno docelowo rozmawiać z tą klasą zamiast bezpośrednio z AssistantEngine.
+ * Główny punkt wejścia dla finalnego WILKA.
+ * Docelowe UI powinno rozmawiać z tą klasą, nie bezpośrednio z AssistantEngine.
  */
 class WilkAdaptiveCore(
     private val store: WilkLearningStore = InMemoryWilkLearningStore()
@@ -57,10 +61,13 @@ class WilkAdaptiveCore(
 
     fun ask(text: String, context: WilkContext = WilkContext()): WilkAnswer {
         val normalized = normalize(text)
-
         val requestedStyle = detectRequestedStyle(normalized)
+
+        // Po odpowiedzi kryzysowej nie robimy swobodnego "przepisz inaczej".
         if (requestedStyle != null && lastAnswer != null) {
             val previous = lastAnswer!!
+            if (previous.crisis) return previous
+
             val rewritten = ExplanationLibrary.rewrite(previous.topic, previous.text, requestedStyle)
             val result = previous.copy(
                 id = answerId(previous.topic, requestedStyle, rewritten),
@@ -72,24 +79,68 @@ class WilkAdaptiveCore(
             return result
         }
 
-        val lora = LoraKnowledge.answer(text)
-        val base = if (lora != null) {
-            AssistantEngine.Reply(lora.text, crisis = false, topic = lora.topic)
-        } else {
-            AssistantEngine.answer(text)
+        val verified = VerifiedCrisisKnowledge.answer(text)
+        val lora = if (verified == null) LoraKnowledge.answer(text) else null
+        val learnedTopic = if (verified == null && lora == null) resolveLearnedTopic(normalized) else null
+
+        val base: AssistantEngine.Reply
+        val source: String
+
+        when {
+            verified != null -> {
+                base = AssistantEngine.Reply(
+                    text = verified.text,
+                    crisis = verified.crisis,
+                    topic = verified.topic
+                )
+                source = "verified-crisis-kb"
+            }
+            lora != null -> {
+                base = AssistantEngine.Reply(lora.text, crisis = false, topic = lora.topic)
+                source = "verified-lora-kb"
+            }
+            learnedTopic != null -> {
+                val entry = SurvivalData.KB.firstOrNull { it.topic == learnedTopic }
+                if (entry != null) {
+                    base = AssistantEngine.Reply(entry.answer, crisis = false, topic = entry.topic)
+                    source = "learned-phrase->local-kb"
+                } else {
+                    base = AssistantEngine.answer(text)
+                    source = "legacy-local-kb"
+                }
+            }
+            else -> {
+                base = AssistantEngine.answer(text)
+                source = "legacy-local-kb"
+            }
+        }
+
+        // Zapamiętujemy realne sformułowanie pytania jako synonim danego tematu.
+        if (!base.crisis && base.topic != null && requestedStyle == null) {
+            rememberPhrase(base.topic, normalized)
         }
 
         val learnedStyle = base.topic?.let { store.read(it)?.preferredStyle }
-        val style = requestedStyle ?: learnedStyle ?: context.preferredStyle
-        val rendered = if (style == ExplanationStyle.STANDARD) base.text
-        else ExplanationLibrary.rewrite(base.topic, base.text, style)
+        val style = if (base.crisis) {
+            ExplanationStyle.STANDARD
+        } else {
+            requestedStyle ?: learnedStyle ?: context.preferredStyle
+        }
+
+        val rendered = if (base.crisis || style == ExplanationStyle.STANDARD) {
+            base.text
+        } else {
+            ExplanationLibrary.rewrite(base.topic, base.text, style)
+        }
 
         val answer = WilkAnswer(
             id = answerId(base.topic, style, rendered),
             text = rendered,
             topic = base.topic,
             crisis = base.crisis,
-            style = style
+            style = style,
+            source = source,
+            suggestedActions = WilkIntegrationContract.actionsFor(base.topic, base.crisis)
         )
         lastAnswer = answer
         return answer
@@ -97,6 +148,8 @@ class WilkAdaptiveCore(
 
     fun explainDifferently(): WilkAnswer? {
         val previous = lastAnswer ?: return null
+        if (previous.crisis) return previous
+
         val nextStyle = when (previous.style) {
             ExplanationStyle.STANDARD -> ExplanationStyle.SIMPLE
             ExplanationStyle.SIMPLE -> ExplanationStyle.STEP_BY_STEP
@@ -116,7 +169,7 @@ class WilkAdaptiveCore(
 
     fun feedback(answerId: String, rating: FeedbackRating, userComment: String? = null) {
         val answer = lastAnswer ?: return
-        if (answer.id != answerId) return
+        if (answer.id != answerId || answer.crisis) return
         val topic = answer.topic ?: return
 
         val current = store.read(topic) ?: TopicLearning(topic)
@@ -129,7 +182,11 @@ class WilkAdaptiveCore(
         }
 
         val learnedPhrases = current.learnedPhrases.toMutableSet()
-        userComment?.trim()?.takeIf { it.length in 3..160 }?.let { learnedPhrases += normalize(it) }
+        userComment?.trim()?.takeIf { it.length in 3..160 }?.let {
+            // Komentarz przechowujemy lokalnie jako sygnał językowy,
+            // ale fakty/procedury pozostają niezmienne.
+            learnedPhrases += normalize(it)
+        }
 
         val preferred = choosePreferredStyle(helpful, notHelpful, current.preferredStyle)
         store.write(
@@ -142,6 +199,17 @@ class WilkAdaptiveCore(
         )
     }
 
+    /** Jawne uczenie lokalnego synonimu/sformułowania dla zatwierdzonego tematu. */
+    fun learnPhrase(topic: String, phrase: String) {
+        val normalized = normalize(phrase).trim()
+        if (normalized.length !in 3..160) return
+        val knownTopic = SurvivalData.KB.any { it.topic == topic } ||
+            topic.startsWith("LoRa") ||
+            VerifiedCrisisKnowledge.knownTopics.contains(topic)
+        if (!knownTopic) return
+        rememberPhrase(topic, normalized)
+    }
+
     fun getLearningState(topic: String): TopicLearning? = store.read(topic)
 
     private fun rememberStyle(topic: String?, style: ExplanationStyle) {
@@ -150,12 +218,52 @@ class WilkAdaptiveCore(
         store.write(current.copy(preferredStyle = style))
     }
 
+    private fun rememberPhrase(topic: String, normalizedPhrase: String) {
+        if (normalizedPhrase.length !in 3..160) return
+        if (isStyleCommand(normalizedPhrase)) return
+
+        val current = store.read(topic) ?: TopicLearning(topic)
+        val phrases = current.learnedPhrases.toMutableSet()
+        phrases += normalizedPhrase
+        // Ograniczamy rozrost lokalnej pamięci na temat.
+        val trimmed = phrases.toList().takeLast(40).toSet()
+        store.write(current.copy(learnedPhrases = trimmed))
+    }
+
+    private fun resolveLearnedTopic(q: String): String? {
+        if (q.length < 3) return null
+
+        return store.all()
+            .asSequence()
+            .flatMap { state -> state.learnedPhrases.asSequence().map { phrase -> state.topic to phrase } }
+            .filter { (_, phrase) -> phrase.length >= 3 }
+            .map { (topic, phrase) ->
+                val score = when {
+                    q == phrase -> 1000 + phrase.length
+                    q.contains(phrase) -> 500 + phrase.length
+                    phrase.contains(q) && q.length >= 6 -> 250 + q.length
+                    else -> tokenOverlapScore(q, phrase)
+                }
+                topic to score
+            }
+            .filter { (_, score) -> score >= 30 }
+            .maxByOrNull { it.second }
+            ?.first
+    }
+
+    private fun tokenOverlapScore(a: String, b: String): Int {
+        val ta = a.split(Regex("\\s+")).filter { it.length >= 4 }.toSet()
+        val tb = b.split(Regex("\\s+")).filter { it.length >= 4 }.toSet()
+        if (ta.isEmpty() || tb.isEmpty()) return 0
+        return ta.intersect(tb).sumOf { it.length * 5 }
+    }
+
     private fun choosePreferredStyle(
         helpful: Map<ExplanationStyle, Int>,
         notHelpful: Map<ExplanationStyle, Int>,
         fallback: ExplanationStyle
     ): ExplanationStyle {
-        return ExplanationStyle.entries.maxByOrNull { style ->
+        return ExplanationStyle.values().maxByOrNull { style ->
             (helpful[style] ?: 0) * 2 - (notHelpful[style] ?: 0)
         }?.takeIf { (helpful[it] ?: 0) > 0 } ?: fallback
     }
@@ -170,6 +278,8 @@ class WilkAdaptiveCore(
         else -> null
     }
 
+    private fun isStyleCommand(q: String): Boolean = detectRequestedStyle(q) != null
+
     private fun answerId(topic: String?, style: ExplanationStyle, text: String): String {
         val hash = (topic.orEmpty() + "|" + style.name + "|" + text).hashCode()
         return "wilk-" + hash.toUInt().toString(16)
@@ -177,7 +287,7 @@ class WilkAdaptiveCore(
 
     private fun normalize(s: String): String {
         val nf = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-        return nf.replace("\\p{Mn}+".toRegex(), "").lowercase()
+        return nf.replace("\\p{Mn}+".toRegex(), "").lowercase().trim()
     }
 }
 
@@ -195,41 +305,41 @@ object ExplanationLibrary {
 
     private fun fire(style: ExplanationStyle): String = when (style) {
         ExplanationStyle.SIMPLE ->
-            "🔥 Najprościej: przygotuj trzy rzeczy. 1) Coś bardzo łatwopalnego: sucha kora brzozy, wata albo drobne suche wióry. 2) Cienkie, suche patyczki. 3) Dopiero potem grubsze drewno. Najpierw zapal rozpałkę, gdy płomień jest stabilny dodawaj cienkie patyczki, a grube drewno dopiero na końcu. Nie rozpalaj ognia w zamkniętym pomieszczeniu bez bezpiecznej wentylacji."
+            "🔥 Najprościej: przygotuj rozpałkę, cienkie suche patyczki i grubsze drewno. Najpierw zapal rozpałkę, potem stopniowo dokładaj cienkie patyczki, a grubsze drewno dopiero gdy płomień jest stabilny. Ogień rozpalaj wyłącznie w bezpiecznym miejscu i nigdy bez wentylacji w zamkniętym pomieszczeniu."
         ExplanationStyle.STEP_BY_STEP ->
-            "🔥 Ogień krok po kroku:\n1. Wybierz bezpieczne miejsce z dala od materiałów łatwopalnych.\n2. Zbierz suchą rozpałkę: korę, watę lub cienkie wióry.\n3. Przygotuj cienkie patyczki i osobno grubsze drewno.\n4. Zapal rozpałkę.\n5. Gdy płomień trzyma się sam, dokładaj cienkie patyczki.\n6. Dopiero gdy powstanie mocniejszy żar, dodaj grubsze drewno.\n7. Nie zostawiaj ognia bez nadzoru i nie używaj go w zamkniętym pomieszczeniu bez bezpiecznej wentylacji."
+            "🔥 Ogień krok po kroku:\n1. Wybierz bezpieczne miejsce z dala od materiałów łatwopalnych.\n2. Przygotuj suchą rozpałkę.\n3. Przygotuj osobno cienkie patyczki i grubsze drewno.\n4. Zapal rozpałkę.\n5. Gdy płomień jest stabilny, dodawaj cienkie patyczki.\n6. Dopiero potem dodawaj grubsze drewno.\n7. Nie zostawiaj ognia bez nadzoru."
         ExplanationStyle.TECHNICAL ->
-            "🔥 Zasada techniczna: ogień potrzebuje paliwa, tlenu i odpowiedniej temperatury. Zacznij od materiału o małej masie i dużej powierzchni (rozpałka), potem zwiększaj przekrój paliwa stopniowo: rozpałka → cienkie patyczki → grubsze drewno. Jeśli od razu położysz duże kawałki, odbiorą ciepło i zduszą płomień. Zachowaj przepływ powietrza i bezpieczną odległość od otoczenia."
+            "🔥 Ogień potrzebuje paliwa, tlenu i odpowiedniej temperatury. Zwiększaj rozmiar paliwa stopniowo: rozpałka → cienkie patyczki → grubsze drewno. Zbyt duży kawałek dołożony za wcześnie może odebrać ciepło i zdusić płomień. Zachowaj przepływ powietrza i bezpieczne otoczenie."
         ExplanationStyle.STANDARD -> error("handled above")
     }
 
     private fun water(style: ExplanationStyle): String = when (style) {
         ExplanationStyle.SIMPLE ->
-            "💧 Jeśli nie masz pewności, że woda jest bezpieczna, nie pij jej od razu. Usuń widoczne zabrudzenia przez czystą tkaninę lub filtr, a następnie zastosuj sprawdzoną metodę uzdatniania zgodną z lokalnymi zaleceniami. Jeśli masz możliwość, wybierz wodę butelkowaną lub oficjalny punkt dystrybucji."
+            "💧 Jeśli nie masz pewności, że woda jest bezpieczna, nie pij jej od razu. Wybierz najczystsze dostępne źródło i stosuj oficjalne zalecenia dotyczące uzdatniania. Przy podejrzeniu skażenia chemicznego samo filtrowanie lub gotowanie może nie wystarczyć."
         ExplanationStyle.STEP_BY_STEP ->
-            "💧 Woda krok po kroku:\n1. Najpierw wybierz najczystsze dostępne źródło.\n2. Usuń widoczne osady przez filtr lub czystą tkaninę.\n3. Zastosuj zatwierdzoną metodę dezynfekcji zgodnie z instrukcją produktu albo oficjalnymi zaleceniami.\n4. Przechowuj uzdatnioną wodę w czystym, zamkniętym pojemniku.\n5. Jeśli służby podają komunikat o skażeniu chemicznym, samo gotowanie może nie wystarczyć — stosuj komunikaty służb."
+            "💧 Woda krok po kroku:\n1. Wybierz najczystsze dostępne źródło.\n2. Usuń widoczne osady filtrem lub czystą tkaniną.\n3. Zastosuj zatwierdzoną metodę dezynfekcji zgodnie z instrukcją lub komunikatem służb.\n4. Przechowuj wodę w czystym, zamkniętym pojemniku.\n5. Przy ostrzeżeniu o skażeniu chemicznym korzystaj z bezpiecznego źródła wskazanego przez służby."
         ExplanationStyle.TECHNICAL ->
-            "💧 Filtracja mechaniczna usuwa część zawiesin, ale nie gwarantuje usunięcia wszystkich drobnoustrojów ani zanieczyszczeń chemicznych. Dlatego etap oczyszczania i dezynfekcji trzeba dobierać do rodzaju zagrożenia. Przy oficjalnym ostrzeżeniu o skażeniu stosuj wyłącznie metody wskazane przez służby."
+            "💧 Filtracja mechaniczna może usuwać zawiesiny, ale nie gwarantuje usunięcia wszystkich drobnoustrojów ani związków chemicznych. Metoda uzdatniania zależy od rodzaju zagrożenia. Przy oficjalnym komunikacie o skażeniu stosuj zalecenia służb i bezpieczne źródło zastępcze."
         ExplanationStyle.STANDARD -> error("handled above")
     }
 
     private fun loraBuy(style: ExplanationStyle): String = when (style) {
         ExplanationStyle.SIMPLE ->
-            "📡 Jeśli jeszcze nic nie kupiłeś, wybierz sprzęt zgodny z europejskim pasmem 868 MHz i z metodą połączenia, którą Polska Wataha faktycznie obsługuje. W obecnej V0.2 przygotowana jest ścieżka USB-OTG dla modułów klasy E22/SX1262. Przed zakupem sprawdź w aplikacji listę „Obsługiwane urządzenia”, bo wsparcie sprzętu będzie rozszerzane."
+            "📡 Jeśli jeszcze nic nie kupiłeś, najpierw sprawdź listę urządzeń faktycznie obsługiwanych przez Polską Watahę. Dla Polski/UE sprzęt musi być zgodny z właściwym profilem regionalnym. Nie kupuj modułu tylko dlatego, że jest popularny."
         ExplanationStyle.STEP_BY_STEP ->
-            "📡 Dobór LoRa krok po kroku:\n1. Sprawdź, czy telefon obsługuje USB-OTG.\n2. W Polsce/UE wybieraj wariant na 868 MHz.\n3. Dla obecnej architektury V0.2 najbezpieczniej wybierać sprzęt klasy E22/SX1262 zgodny z planowanym połączeniem USB-OTG.\n4. Nie kupuj wariantu 915 MHz przeznaczonego na inne regiony.\n5. Przed płatnością porównaj model z aktualną listą urządzeń obsługiwanych przez Polską Watahę."
+            "📡 Dobór LoRa krok po kroku:\n1. Otwórz w aplikacji listę obsługiwanego sprzętu.\n2. Sprawdź sposób połączenia z telefonem.\n3. Sprawdź wariant regionalny urządzenia.\n4. Wybierz sprzęt, dla którego aplikacja ma działający sterownik.\n5. Dopiero wtedy kup konkretny model."
         ExplanationStyle.TECHNICAL ->
-            "📡 V0.2 ma kontrakt SerialTransport pod USB-OTG i ramki WatahaMesh. Warstwa LoRa wymienia E22-900T / SX1262 jako planowaną klasę sprzętu. Wariant radiowy musi odpowiadać regulacjom regionu EU868. Konkretne urządzenie powinno być oznaczone jako wspierane dopiero po wdrożeniu sterownika i teście nadawania/odbioru w aplikacji."
+            "📡 Warstwa WILKA nie deklaruje konkretnego modułu jako wspieranego bez działającego sterownika i testu transmisji w finalnej Polskiej Watasze. Dobór sprzętu musi być zsynchronizowany z aktualnym Hardware Support Registry aplikacji i profilem regionalnym."
         ExplanationStyle.STANDARD -> error("handled above")
     }
 
     private fun loraSetup(style: ExplanationStyle): String = when (style) {
         ExplanationStyle.SIMPLE ->
-            "📡 Podłącz moduł do telefonu przez obsługiwany interfejs, uruchom Polską Watahę i otwórz sekcję LoRa. Aplikacja powinna wykryć urządzenie, poprosić o potrzebne uprawnienia i wykonać test połączenia. Jeśli go nie widzi, sprawdź OTG, kabel, zasilanie i zgodność modelu."
+            "📡 Podłącz wyłącznie moduł oznaczony przez Polską Watahę jako obsługiwany. Otwórz Łączność → LoRa, uruchom wykrywanie i wykonaj test połączenia. Jeśli aplikacja go nie widzi, sprawdź zasilanie, przewód lub łączność oraz zgodność modelu."
         ExplanationStyle.STEP_BY_STEP ->
-            "📡 Konfiguracja LoRa krok po kroku:\n1. Sprawdź zgodność modułu z Polską Watahą.\n2. Podłącz go do telefonu przez wymagany interfejs.\n3. Nadaj aplikacji wymagane uprawnienia.\n4. Otwórz Łączność → LoRa → Wykryj urządzenie.\n5. Wybierz profil EU868.\n6. Uruchom test nadawania/odbioru.\n7. Jeśli test nie przejdzie, sprawdź zasilanie, kabel/OTG, firmware i zgodność sprzętu."
+            "📡 Konfiguracja LoRa krok po kroku:\n1. Sprawdź zgodność modułu.\n2. Podłącz go zgodnie z instrukcją sprzętu.\n3. Nadaj wymagane uprawnienia.\n4. Otwórz Łączność → LoRa.\n5. Wykryj urządzenie.\n6. Wybierz właściwy profil regionalny.\n7. Uruchom test nadawania i odbioru.\n8. Zapisz konfigurację dopiero po udanym teście."
         ExplanationStyle.TECHNICAL ->
-            "📡 Konfiguracja powinna przejść przez warstwę transportu aplikacji: wykrycie urządzenia → otwarcie transportu → inicjalizacja profilu EU868 → test ramki WatahaMesh → potwierdzenie odbioru. Nie zapisuj konfiguracji jako poprawnej, dopóki aplikacja nie potwierdzi realnej transmisji."
+            "📡 Integracja powinna przejść pełną ścieżkę: wykrycie urządzenia → otwarcie transportu → konfiguracja profilu → test ramki → potwierdzenie odbioru. WILK nie powinien uznawać sprzętu za skonfigurowany bez realnego potwierdzenia transmisji."
         ExplanationStyle.STANDARD -> error("handled above")
     }
 
