@@ -93,5 +93,11 @@ class SharedPrefsWilkLearningStore(context: Context) : WilkLearningStore {
 }
 
 /** Fabryka używana przez aplikację docelową przy integracji. */
-fun createPersistentWilk(context: Context): WilkAdaptiveCore =
-    WilkAdaptiveCore(SharedPrefsWilkLearningStore(context))
+fun createPersistentWilk(
+    context: Context,
+    loraRegistry: LoraSupportRegistry = NoConfirmedLoraSupport
+): WilkAdaptiveCore =
+    WilkAdaptiveCore(
+        store = SharedPrefsWilkLearningStore(context),
+        loraRegistry = loraRegistry
+    )
