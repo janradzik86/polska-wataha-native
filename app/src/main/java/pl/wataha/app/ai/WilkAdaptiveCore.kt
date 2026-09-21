@@ -182,20 +182,17 @@ class WilkAdaptiveCore(
             FeedbackRating.NOT_HELPFUL -> notHelpful[answer.style] = (notHelpful[answer.style] ?: 0) + 1
         }
 
-        val learnedPhrases = current.learnedPhrases.toMutableSet()
-        userComment?.trim()?.takeIf { it.length in 3..160 }?.let {
-            // Komentarz przechowujemy lokalnie jako sygnał językowy,
-            // ale fakty/procedury pozostają niezmienne.
-            learnedPhrases += normalize(it)
-        }
+        // Komentarz użytkownika może być wykorzystany przez UI/telemetrię lokalną,
+        // ale NIE zapisujemy go jako synonimu tematu. Dzięki temu tekst typu
+        // "tak jest zrozumiale" nie zacznie później kierować pytań do losowej procedury.
+        userComment?.trim()
 
         val preferred = choosePreferredStyle(helpful, notHelpful, current.preferredStyle)
         store.write(
             current.copy(
                 preferredStyle = preferred,
                 helpfulByStyle = helpful,
-                notHelpfulByStyle = notHelpful,
-                learnedPhrases = learnedPhrases
+                notHelpfulByStyle = notHelpful
             )
         )
     }
