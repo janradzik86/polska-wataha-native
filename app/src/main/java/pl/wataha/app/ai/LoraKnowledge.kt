@@ -1,11 +1,28 @@
 package pl.wataha.app.ai
 
 /**
- * Zatwierdzona warstwa wiedzy LoRa dla WILKA.
+ * Warstwa wiedzy LoRa dla WILKA.
  *
- * Nie deklaruje sprzętu jako obsługiwanego, jeśli aplikacja nie ma jeszcze
- * działającego sterownika. V0.2 posiada kontrakt USB-OTG pod E22/SX1262.
+ * Kluczowa zasada:
+ * WILK nie może nazywać sprzętu "obsługiwanym", dopóki finalna Polska Wataha
+ * nie potwierdzi go przez rejestr działającego hardware support.
  */
+data class LoraDeviceSupport(
+    val id: String,
+    val displayName: String,
+    val connection: String,
+    val regionalProfile: String,
+    val tested: Boolean
+)
+
+interface LoraSupportRegistry {
+    fun supportedDevices(): List<LoraDeviceSupport>
+}
+
+object NoConfirmedLoraSupport : LoraSupportRegistry {
+    override fun supportedDevices(): List<LoraDeviceSupport> = emptyList()
+}
+
 object LoraKnowledge {
     data class LoraReply(val topic: String, val text: String)
 
@@ -14,46 +31,77 @@ object LoraKnowledge {
         return nf.replace("\\p{Mn}+".toRegex(), "").lowercase()
     }
 
-    fun answer(userText: String): LoraReply? {
+    fun answer(
+        userText: String,
+        registry: LoraSupportRegistry = NoConfirmedLoraSupport
+    ): LoraReply? {
         val q = normalize(userText)
-        val mentionsLora = listOf("lora", "sx1262", "e22", "heltec", "meshtastic", "868 mhz", "eu868", "modul radiowy")
-            .any { q.contains(it) }
+        val mentionsLora = listOf(
+            "lora", "sx1262", "e22", "heltec", "meshtastic",
+            "868 mhz", "eu868", "modul radiowy"
+        ).any { q.contains(it) }
         if (!mentionsLora) return null
 
-        val wantsToBuy = listOf("jaki kupic", "co kupic", "jaki modul", "nie mam modulu", "polecisz", "polec", "wybrac", "najlepszy")
-            .any { q.contains(it) }
+        val devices = registry.supportedDevices().filter { it.tested }
+
+        val wantsToBuy = listOf(
+            "jaki kupic", "co kupic", "jaki modul", "nie mam modulu",
+            "polecisz", "polec", "wybrac", "najlepszy"
+        ).any { q.contains(it) }
 
         if (wantsToBuy) {
+            if (devices.isEmpty()) {
+                return LoraReply(
+                    "LoRa — wybór sprzętu",
+                    """
+                    📡 Nie mam jeszcze potwierdzonej listy urządzeń LoRa przetestowanych z finalną Polską Watahą.
+                    Dlatego nie będę udawał, że konkretny model na pewno zadziała.
+
+                    Przy wyborze sprawdzaj:
+                    • zgodność z profilem regionalnym używanym w Polsce/UE,
+                    • sposób połączenia obsługiwany przez aplikację,
+                    • czy model jest oznaczony w Polskiej Watasze jako PRZETESTOWANY,
+                    • czy aplikacja ma dla niego działający sterownik.
+
+                    Gdy finalna aplikacja przekaże mi listę wspieranego sprzętu, będę mógł dobrać konkretny model do budżetu, prostoty obsługi i zastosowania.
+                    """.trimIndent()
+                )
+            }
+
+            val list = devices.take(5).joinToString("\n") {
+                "• ${it.displayName} — ${it.connection}, ${it.regionalProfile}"
+            }
             return LoraReply(
                 "LoRa — wybór sprzętu",
-                """
-                📡 Jeśli dopiero wybierasz moduł LoRa do Polskiej Watahy:
-                • wybieraj sprzęt przeznaczony dla regionu EU868,
-                • sprawdź sposób połączenia z telefonem (USB-OTG / Bluetooth / Wi-Fi),
-                • kupuj dopiero model oznaczony w aplikacji jako „obsługiwany”,
-                • obecna V0.2 ma przygotowany kontrakt USB-OTG dla klasy E22/SX1262, ale fizyczna integracja jest etapem późniejszym.
-
-                Jeśli napiszesz „chcę najprościej”, „chcę najtaniej” albo „chcę największy zasięg”, WILK może dobrać profil sprzętu, ale finalny model musi być zgodny z aktualną listą wspieranych urządzeń.
-                """.trimIndent()
+                "📡 Urządzenia potwierdzone przez finalną Polską Watahę:\n$list\n\nWybieraj tylko model oznaczony jako przetestowany w aplikacji."
             )
         }
 
-        val wantsSetup = listOf("polaczyc", "sparowac", "skonfigurowac", "ustawic", "telefon", "usb", "otg", "bluetooth", "nie widzi", "nie dziala")
-            .any { q.contains(it) }
+        val wantsSetup = listOf(
+            "polaczyc", "sparowac", "skonfigurowac", "ustawic",
+            "telefon", "usb", "otg", "bluetooth", "nie widzi", "nie dziala"
+        ).any { q.contains(it) }
 
         if (wantsSetup) {
+            val supportNote = if (devices.isEmpty()) {
+                "Najpierw sprawdź w aplikacji, czy Twój model jest oznaczony jako przetestowany."
+            } else {
+                "Przetestowane modele: " + devices.take(5).joinToString { it.displayName } + "."
+            }
+
             return LoraReply(
                 "LoRa — konfiguracja",
                 """
                 📡 Konfiguracja LoRa:
-                1. Sprawdź, czy model jest na liście urządzeń obsługiwanych przez Polską Watahę.
-                2. Dla połączenia USB sprawdź obsługę USB-OTG w telefonie i użyj kabla danych, nie tylko kabla do ładowania.
-                3. Podłącz i zasil moduł.
-                4. W aplikacji otwórz Łączność → LoRa i uruchom wykrywanie.
-                5. Wybierz profil regionalny EU868.
-                6. Wykonaj test nadawania/odbioru z drugim węzłem.
+                1. $supportNote
+                2. Podłącz moduł metodą przewidzianą dla danego modelu.
+                3. Nadaj aplikacji wymagane uprawnienia.
+                4. Otwórz Łączność → LoRa i uruchom wykrywanie.
+                5. Ustaw profil regionalny zgodny z finalną konfiguracją aplikacji.
+                6. Wykonaj realny test nadawania i odbioru z drugim węzłem.
+                7. Jeżeli test nie przejdzie, sprawdź kolejno: zasilanie → przewód/łączność → uprawnienia → firmware → zgodność modelu.
 
-                Jeśli urządzenie nie zostanie wykryte, sprawdź kolejno: zasilanie → kabel/OTG → uprawnienia → firmware → zgodność modelu.
+                Nie uznawaj konfiguracji za działającą tylko dlatego, że moduł został wykryty.
                 """.trimIndent()
             )
         }
@@ -61,10 +109,9 @@ object LoraKnowledge {
         return LoraReply(
             "LoRa — informacje",
             """
-            📡 LoRa w Polskiej Watasze ma służyć do krótkich wiadomości i komunikacji awaryjnej poza internetem.
-            Telefon sam nie ma radia LoRa, więc potrzebuje zgodnego modułu zewnętrznego.
-            W Polsce/UE sprzęt musi być dobrany do właściwego pasma i obowiązujących parametrów radiowych.
-            Napisz: „jaki moduł LoRa kupić?” albo „jak połączyć LoRa z telefonem?”, a przeprowadzę Cię dalej.
+            📡 LoRa może służyć Polskiej Watasze do krótkich wiadomości i łączności awaryjnej poza internetem.
+            Telefon zwykle potrzebuje do tego zgodnego zewnętrznego modułu.
+            Konkretne instrukcje sprzętowe WILK podaje dopiero na podstawie listy urządzeń faktycznie przetestowanych przez finalną aplikację.
             """.trimIndent()
         )
     }
